@@ -3,7 +3,7 @@ export const siteConfig = {
   shortName: "ТЕХДЕЛО",
   description:
     "Демонстрационный сайт регионального оператора аренды спецтехники в Калуге и Калужской области.",
-  url: "https://techdelo-40-demo.vercel.app",
+  url: "https://techdelo-40-demo-malafarida78755z0x-6859s-projects.vercel.app",
   phoneDisplay: "+7 (4842) 000-00-00 · demo",
   phoneHref: "/request",
   email: "request@techdelo40.demo",

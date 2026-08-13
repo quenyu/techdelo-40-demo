@@ -2,6 +2,8 @@
 
 Commercial-grade concept/demo сайта вымышленного регионального оператора аренды спецтехники в Калуге.
 
+Production deployment: [techdelo-40-demo](https://techdelo-40-demo-malafarida78755z0x-6859s-projects.vercel.app). На момент handoff URL находится под account-level Vercel Deployment Protection; это отмечено как внешний deployment blocker.
+
 > **Concept / Demo Project.** Это не сайт реальной компании и не оплаченный клиентский кейс. Контакты, парк, цены и условия демонстрационные. Формы валидируются только в браузере и ничего не отправляют.
 
 ## Что реализовано
