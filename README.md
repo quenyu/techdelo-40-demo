@@ -29,14 +29,16 @@ npm install
 npm run dev
 ```
 
-Проверки:
+Полный quality gate и production browser-QA:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test:run
-npm run build
+npm run qa
+npm run qa:browser
 ```
+
+`qa:browser` самостоятельно поднимает production build и проверяет ключевые страницы, формы, responsive-состояния и WCAG через axe. Для проверки уже развёрнутого сайта можно передать `QA_BASE_URL`.
+
+Те же проверки автоматически выполняются в GitHub Actions для pull request и каждого push в `main`.
 
 ## Документация
 

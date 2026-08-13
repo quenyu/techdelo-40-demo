@@ -1,18 +1,79 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import chromiumBundle from "@sparticuz/chromium";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 
-const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:3000";
+const qaPort = process.env.QA_PORT ?? "3000";
+const baseUrl = process.env.QA_BASE_URL ?? `http://127.0.0.1:${qaPort}`;
 const outputDir = path.resolve("artifacts/screenshots");
 await fs.mkdir(outputDir, { recursive: true });
 await fs.mkdir("/tmp/techdelo-font-cache", { recursive: true });
 process.env.XDG_CACHE_HOME = "/tmp/techdelo-font-cache";
 chromiumBundle.setGraphicsMode = false;
 
+let server;
+
+function stopServer() {
+  if (server && !server.killed) server.kill("SIGTERM");
+}
+
+async function waitForServer() {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    try {
+      if ((await fetch(baseUrl)).ok) return;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`Production server did not become ready at ${baseUrl}`);
+}
+
+if (!process.env.QA_BASE_URL) {
+  server = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", qaPort],
+    {
+      env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+
+  let serverError = "";
+  server.stderr.on("data", (chunk) => {
+    serverError += chunk.toString();
+  });
+
+  await Promise.race([
+    waitForServer(),
+    new Promise((_, reject) => {
+      server.once("exit", (code, signal) => {
+        reject(new Error(`Production server exited before QA (code ${code}, signal ${signal})\n${serverError}`));
+      });
+    }),
+  ]);
+}
+
+process.once("exit", stopServer);
+
+async function resolveChromiumExecutable() {
+  const originalGetuid = process.getuid;
+
+  try {
+    // tar-fs preserves archive ownership when Node runs as root. Some CI and
+    // container filesystems reject chown even for root, so extract as the
+    // current user instead; file permissions remain suitable for headless QA.
+    if (typeof originalGetuid === "function" && originalGetuid() === 0) {
+      process.getuid = () => -1;
+    }
+    return await chromiumBundle.executablePath();
+  } finally {
+    process.getuid = originalGetuid;
+  }
+}
+
 const browser = await chromium.launch({
-  executablePath: await chromiumBundle.executablePath(),
+  executablePath: await resolveChromiumExecutable(),
   args: [
     "--no-sandbox",
     "--disable-setuid-sandbox",
@@ -121,6 +182,7 @@ await screenshotPage("/catalog/jcb-3cx", "equipment-mobile-390", { width: 390, h
 }
 
 await browser.close();
+stopServer();
 
 const report = { baseUrl, generatedAt: new Date().toISOString(), checks, issues };
 await fs.writeFile(path.resolve("artifacts/qa-report.json"), `${JSON.stringify(report, null, 2)}\n`);
